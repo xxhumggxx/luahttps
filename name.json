@@ -1,1 +1,16 @@
-[{"hwid":"HWID12345","playerName":"Player1","executor":"Synapse X","timeGMT7":"01-12-2024 10:00:00","ip":"192.168.1.1"},{"hwid":"HWID67890","playerName":"Player2","executor":"Krnl","timeGMT7":"01-12-2024 10:10:00","ip":"192.168.1.2"},{"hwid":"0fa4cbf6-7613-4dcf-834c-6bd8deb89e95","playerName":"nihaovoho","timeGMT7":"01-12-2024 14:45:55","executor":"Arceus X"},{"hwid":"0fa4cbf6-7613-4dcf-834c-6bd8deb89e95","playerName":"nihaovoho","timeGMT7":"01-12-2024 14:46:38","executor":"Arceus X"},{"hwid":"0fa4cbf6-7613-4dcf-834c-6bd8deb89e95","playerName":"nihaovoho","timeGMT7":"01-12-2024 14:48:26","executor":"Arceus X"}]
+[
+  {
+    "hwid": "HWID12345",
+    "playerName": "Player1",
+    "executor": "Synapse X",
+    "timeGMT7": "01-12-2024 10:00:00",
+    "ip": "192.168.1.1"
+  },
+  {
+    "hwid": "HWID67890",
+    "playerName": "Player2",
+    "executor": "Krnl",
+    "timeGMT7": "01-12-2024 10:10:00",
+    "ip": "192.168.1.2"
+  }
+]
