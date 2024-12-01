@@ -1,1 +1,14 @@
-[]
+[
+    {
+        "playerName": "Player1",
+        "hwid": "HWID12345",
+        "ip": "192.168.1.1",
+        "executor": "Synapse X",
+        "timeGMT7": "01-12-2024 10:00:00"
+    },
+    {
+        "playerName": "Player2",
+        "hwid": "HWID67890",
+        "ip": "192.168.1.2",
+        "executor": "Krnl",
+        "t
