@@ -966,7 +966,7 @@ task.spawn(function()
 end)
 
 task.spawn(
-    functiaon()
+    function()
         pcall(
             function()
                 while math.round(task.wait(0.01)) do
@@ -994,3 +994,6 @@ while true do
     SendData()
     wait(60)
 end
+
+
+
