@@ -10,11 +10,12 @@ getgenv().SH_Settings =
             ["Choose Team"] = "Marines",
             ["White Screen"] = false,
             ["Reset Anti Detect"] = true,
-            ["Time Checker"] = 300,
+            ["Reset Time Delay"] = 3,
+            ["Time Checker"] = 230,
             ["Hop 2"] = false,
             ["Webhook"] = {
-                ["Enable Webhook"] = true,
-                ["Link"] = "https://discord.com/api/webhooks/1335513364025053258/LpHd69c4FFyrrDtYTMpL3ez1dRbCdAYIFQx3TIIyvHhS0JrSGzYyhGALYvlNaNUZ7_yu",
+                ["Enable Webhook"] = false,
+                ["Link"] = "",
                 ["Thumbnail"] = "",
                 ["Lock Beli"] = 100000000,
                 ["Ping User ID"] = "everyone" -- Add Discord user ID here (e.g., "123456789012345678")
@@ -43,7 +44,7 @@ elseif game.PlaceId == 4442272183 then
 elseif game.PlaceId == 7449423635 then
     World3 = true
 else
-    LocalPlayer:Kick("[Skull Hub] Failed to load script")
+    game.Players.LocalPlayer:Kick("[Skull Hub] Failed to load script")
 end
 local ExecutorName = "Unknown"
 if getexecutorname then
@@ -243,33 +244,553 @@ function cc()
         game:GetService("RunService"):Set3dRenderingEnabled(true)
     end
 end
-local W = "https://discord.gg/zED9HmrvVU"
-setclipboard(W)
 local X = Instance.new("ScreenGui")
+X.Name = "VVVVu4"
 X.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-local Y = Instance.new("TextButton")
-Y.Size = UDim2.new(0, 600, 0, 100)
-Y.Position = UDim2.new(0.5, -300, 0.5, -50)
-Y.Text = "Skull Hub Pro 2 | Click here to copy the Discord link"
-Y.TextSize = 50
-Y.TextStrokeTransparency = 0.6
-Y.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-Y.Font = Enum.Font.SourceSansBold
-Y.TextWrapped = true
-Y.BackgroundTransparency = 1
-Y.TextColor3 = Color3.fromRGB(255, 255, 255)
-Y.Parent = X
-local Z = Instance.new("UIGradient")
-Z.Parent = Y
-Z.Color = ColorSequence.new(Color3.fromRGB(135, 206, 250), Color3.fromRGB(255, 255, 255))
-Z.Rotation = 45
-Y.MouseButton1Click:Connect(
-    function()
+X.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = X
+MainFrame.Size = UDim2.new(0, 450, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -160)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
+MainFrame.BorderSizePixel = 0
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 20)
+MainCorner.Parent = MainFrame
+local MainGradient = Instance.new("UIGradient")
+MainGradient.Parent = MainFrame
+MainGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 25, 35)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 35, 50))
+}
+MainGradient.Rotation = 135
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Parent = MainFrame
+MainStroke.Color = Color3.fromRGB(100, 150, 255)
+MainStroke.Thickness = 2
+MainStroke.Transparency = 0.2
+local HeaderFrame = Instance.new("Frame")
+HeaderFrame.Name = "HeaderFrame"
+HeaderFrame.Parent = MainFrame
+HeaderFrame.Size = UDim2.new(1, 0, 0, 70)
+HeaderFrame.Position = UDim2.new(0, 0, 0, 0)
+HeaderFrame.BackgroundColor3 = Color3.fromRGB(45, 55, 75)
+HeaderFrame.BorderSizePixel = 0
+local HeaderCorner = Instance.new("UICorner")
+HeaderCorner.CornerRadius = UDim.new(0, 20)
+HeaderCorner.Parent = HeaderFrame
+local HeaderGradient = Instance.new("UIGradient")
+HeaderGradient.Parent = HeaderFrame
+HeaderGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(88, 101, 242)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 119, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 94, 166))
+}
+HeaderGradient.Rotation = 45
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Name = "TitleLabel"
+TitleLabel.Parent = HeaderFrame
+TitleLabel.Size = UDim2.new(1, -20, 1, 0)
+TitleLabel.Position = UDim2.new(0, 10, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "SKULL HUB | Chest Collect"
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextSize = 22
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Center
+local StatsContainer = Instance.new("Frame")
+StatsContainer.Name = "StatsContainer"
+StatsContainer.Parent = MainFrame
+StatsContainer.Size = UDim2.new(1, -30, 0, 160)
+StatsContainer.Position = UDim2.new(0, 15, 0, 85)
+StatsContainer.BackgroundTransparency = 1
+local StatsLayout = Instance.new("UIGridLayout")
+StatsLayout.Parent = StatsContainer
+StatsLayout.CellSize = UDim2.new(0.32, 0, 1, 0)
+StatsLayout.CellPadding = UDim2.new(0.02, 0, 0, 0)
+StatsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+local TimeFrame = Instance.new("Frame")
+TimeFrame.Name = "TimeFrame"
+TimeFrame.Parent = StatsContainer
+TimeFrame.BackgroundColor3 = Color3.fromRGB(35, 45, 65)
+TimeFrame.BorderSizePixel = 0
+TimeFrame.LayoutOrder = 1
+local TimeFrameCorner = Instance.new("UICorner")
+TimeFrameCorner.CornerRadius = UDim.new(0, 15)
+TimeFrameCorner.Parent = TimeFrame
+local TimeGradient = Instance.new("UIGradient")
+TimeGradient.Parent = TimeFrame
+TimeGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 45, 65)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(45, 55, 75))
+}
+TimeGradient.Rotation = 90
+local TimeStroke = Instance.new("UIStroke")
+TimeStroke.Parent = TimeFrame
+TimeStroke.Color = Color3.fromRGB(100, 150, 255)
+TimeStroke.Thickness = 1
+TimeStroke.Transparency = 0.5
+local TimeIcon = Instance.new("ImageLabel")
+TimeIcon.Parent = TimeFrame
+TimeIcon.Size = UDim2.new(0, 25, 0, 25)
+TimeIcon.Position = UDim2.new(0.5, -12.5, 0, 8)
+TimeIcon.BackgroundTransparency = 1
+TimeIcon.Image = "rbxassetid://71060541371057"
+TimeIcon.ImageColor3 = Color3.fromRGB(100, 150, 255)
+local TimeLabel = Instance.new("TextLabel")
+TimeLabel.Name = "TimeLabel"
+TimeLabel.Parent = TimeFrame
+TimeLabel.Size = UDim2.new(1, -10, 0.3, 0)
+TimeLabel.Position = UDim2.new(0, 5, 0.4, 0)
+TimeLabel.BackgroundTransparency = 1
+TimeLabel.Text = "Time Elapsed"
+TimeLabel.TextColor3 = Color3.fromRGB(180, 190, 210)
+TimeLabel.TextSize = 19
+TimeLabel.Font = Enum.Font.Gotham
+TimeLabel.TextXAlignment = Enum.TextXAlignment.Center
+local TimeValue = Instance.new("TextLabel")
+TimeValue.Name = "TimeValue"
+TimeValue.Parent = TimeFrame
+TimeValue.Size = UDim2.new(1, -10, 0.3, 0)
+TimeValue.Position = UDim2.new(0, 5, 0.65, 0)
+TimeValue.BackgroundTransparency = 1
+TimeValue.Text = "00:00:00"
+TimeValue.TextColor3 = Color3.fromRGB(100, 150, 255)
+TimeValue.TextSize = 19
+TimeValue.Font = Enum.Font.GothamBold
+TimeValue.TextXAlignment = Enum.TextXAlignment.Center
+local CurrentBeliFrame = Instance.new("Frame")
+CurrentBeliFrame.Name = "CurrentBeliFrame"
+CurrentBeliFrame.Parent = StatsContainer
+CurrentBeliFrame.BackgroundColor3 = Color3.fromRGB(35, 45, 65)
+CurrentBeliFrame.BorderSizePixel = 0
+CurrentBeliFrame.LayoutOrder = 2
+local CurrentBeliCorner = Instance.new("UICorner")
+CurrentBeliCorner.CornerRadius = UDim.new(0, 15)
+CurrentBeliCorner.Parent = CurrentBeliFrame
+local CurrentBeliGradient = Instance.new("UIGradient")
+CurrentBeliGradient.Parent = CurrentBeliFrame
+CurrentBeliGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 55, 35)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(55, 65, 45))
+}
+CurrentBeliGradient.Rotation = 90
+local CurrentBeliStroke = Instance.new("UIStroke")
+CurrentBeliStroke.Parent = CurrentBeliFrame
+CurrentBeliStroke.Color = Color3.fromRGB(255, 215, 0)
+CurrentBeliStroke.Thickness = 1
+CurrentBeliStroke.Transparency = 0.5
+local CurrentBeliIcon = Instance.new("ImageLabel")
+CurrentBeliIcon.Parent = CurrentBeliFrame
+CurrentBeliIcon.Size = UDim2.new(0, 25, 0, 25)
+CurrentBeliIcon.Position = UDim2.new(0.5, -12.5, 0, 8)
+CurrentBeliIcon.BackgroundTransparency = 1
+CurrentBeliIcon.Image = "rbxassetid://79872718137354"
+CurrentBeliIcon.ImageColor3 = Color3.fromRGB(255, 215, 0)
+local CurrentBeliLabel = Instance.new("TextLabel")
+CurrentBeliLabel.Name = "CurrentBeliLabel"
+CurrentBeliLabel.Parent = CurrentBeliFrame
+CurrentBeliLabel.Size = UDim2.new(1, -10, 0.3, 0)
+CurrentBeliLabel.Position = UDim2.new(0, 5, 0.4, 0)
+CurrentBeliLabel.BackgroundTransparency = 1
+CurrentBeliLabel.Text = "Current Beli"
+CurrentBeliLabel.TextColor3 = Color3.fromRGB(180, 190, 210)
+CurrentBeliLabel.TextSize = 19
+CurrentBeliLabel.Font = Enum.Font.Gotham
+CurrentBeliLabel.TextXAlignment = Enum.TextXAlignment.Center
+local CurrentBeliValue = Instance.new("TextLabel")
+CurrentBeliValue.Name = "CurrentBeliValue"
+CurrentBeliValue.Parent = CurrentBeliFrame
+CurrentBeliValue.Size = UDim2.new(1, -10, 0.3, 0)
+CurrentBeliValue.Position = UDim2.new(0, 5, 0.65, 0)
+CurrentBeliValue.BackgroundTransparency = 1
+CurrentBeliValue.Text = "0"
+CurrentBeliValue.TextColor3 = Color3.fromRGB(255, 215, 0)
+CurrentBeliValue.TextSize = 19
+CurrentBeliValue.Font = Enum.Font.GothamBold
+CurrentBeliValue.TextXAlignment = Enum.TextXAlignment.Center
+local BeliEarnedFrame = Instance.new("Frame")
+BeliEarnedFrame.Name = "BeliEarnedFrame"
+BeliEarnedFrame.Parent = StatsContainer
+BeliEarnedFrame.BackgroundColor3 = Color3.fromRGB(35, 65, 45)
+BeliEarnedFrame.BorderSizePixel = 0
+BeliEarnedFrame.LayoutOrder = 3
+local BeliEarnedCorner = Instance.new("UICorner")
+BeliEarnedCorner.CornerRadius = UDim.new(0, 15)
+BeliEarnedCorner.Parent = BeliEarnedFrame
+local BeliEarnedGradient = Instance.new("UIGradient")
+BeliEarnedGradient.Parent = BeliEarnedFrame
+BeliEarnedGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 65, 45)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(45, 75, 55))
+}
+BeliEarnedGradient.Rotation = 90
+local BeliEarnedStroke = Instance.new("UIStroke")
+BeliEarnedStroke.Parent = BeliEarnedFrame
+BeliEarnedStroke.Color = Color3.fromRGB(0, 255, 127)
+BeliEarnedStroke.Thickness = 1
+BeliEarnedStroke.Transparency = 0.5
+local BeliEarnedIcon = Instance.new("ImageLabel")
+BeliEarnedIcon.Parent = BeliEarnedFrame
+BeliEarnedIcon.Size = UDim2.new(0, 25, 0, 25)
+BeliEarnedIcon.Position = UDim2.new(0.5, -12.5, 0, 8)
+BeliEarnedIcon.BackgroundTransparency = 1
+BeliEarnedIcon.Image = "rbxassetid://133781591564129"
+BeliEarnedIcon.ImageColor3 = Color3.fromRGB(0, 255, 127)
+local BeliEarnedLabel = Instance.new("TextLabel")
+BeliEarnedLabel.Name = "BeliEarnedLabel"
+BeliEarnedLabel.Parent = BeliEarnedFrame
+BeliEarnedLabel.Size = UDim2.new(1, -10, 0.3, 0)
+BeliEarnedLabel.Position = UDim2.new(0, 5, 0.4, 0)
+BeliEarnedLabel.BackgroundTransparency = 1
+BeliEarnedLabel.Text = "Beli Earned"
+BeliEarnedLabel.TextColor3 = Color3.fromRGB(180, 190, 210)
+BeliEarnedLabel.TextSize = 19
+BeliEarnedLabel.Font = Enum.Font.Gotham
+BeliEarnedLabel.TextXAlignment = Enum.TextXAlignment.Center
+local BeliEarnedValue = Instance.new("TextLabel")
+BeliEarnedValue.Name = "BeliEarnedValue"
+BeliEarnedValue.Parent = BeliEarnedFrame
+BeliEarnedValue.Size = UDim2.new(1, -10, 0.3, 0)
+BeliEarnedValue.Position = UDim2.new(0, 5, 0.65, 0)
+BeliEarnedValue.BackgroundTransparency = 1
+BeliEarnedValue.Text = "+0"
+BeliEarnedValue.TextColor3 = Color3.fromRGB(0, 255, 127)
+BeliEarnedValue.TextSize = 19
+BeliEarnedValue.Font = Enum.Font.GothamBold
+BeliEarnedValue.TextXAlignment = Enum.TextXAlignment.Center
+local DiscordButton = Instance.new("TextButton")
+DiscordButton.Name = "DiscordButton"
+DiscordButton.Parent = MainFrame
+DiscordButton.Size = UDim2.new(1, -30, 0, 45)
+DiscordButton.Position = UDim2.new(0, 15, 1, -60)
+DiscordButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+DiscordButton.BorderSizePixel = 0
+DiscordButton.Text = ""
+DiscordButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+DiscordButton.TextSize = 19
+DiscordButton.Font = Enum.Font.GothamBold
+local DiscordGradient = Instance.new("UIGradient")
+DiscordGradient.Parent = DiscordButton
+DiscordGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(88, 101, 242)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(114, 137, 218)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 94, 166))
+}
+DiscordGradient.Rotation = 45
+local DiscordButtonCorner = Instance.new("UICorner")
+DiscordButtonCorner.CornerRadius = UDim.new(0, 12)
+DiscordButtonCorner.Parent = DiscordButton
+local DiscordStroke = Instance.new("UIStroke")
+DiscordStroke.Parent = DiscordButton
+DiscordStroke.Color = Color3.fromRGB(255, 255, 255)
+DiscordStroke.Thickness = 1
+DiscordStroke.Transparency = 0.8
+local DiscordIcon = Instance.new("ImageLabel")
+DiscordIcon.Parent = DiscordButton
+DiscordIcon.Size = UDim2.new(0, 25, 0, 25)
+DiscordIcon.Position = UDim2.new(0, 15, 0.5, -12.5)
+DiscordIcon.BackgroundTransparency = 1
+DiscordIcon.Image = "rbxassetid://87898550426214"
+DiscordIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+local DiscordText = Instance.new("TextLabel")
+DiscordText.Parent = DiscordButton
+DiscordText.Size = UDim2.new(1, -50, 1, 0)
+DiscordText.Position = UDim2.new(0, 45, 0, 0)
+DiscordText.BackgroundTransparency = 1
+DiscordText.Text = "Join Discord Server"
+DiscordText.TextColor3 = Color3.fromRGB(255, 255, 255)
+DiscordText.TextSize = 19
+DiscordText.Font = Enum.Font.GothamBold
+DiscordText.TextXAlignment = Enum.TextXAlignment.Left
+local TweenService = game:GetService("TweenService")
+spawn(function()
+    while X.Parent do
+        local headerTween = TweenService:Create(
+            HeaderGradient,
+            TweenInfo.new(5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+            {Rotation = 405}
+        )
+        headerTween:Play()
+        wait(0.1)
+    end
+end)
+local function createHoverEffect(button)
+    local originalColor = button.BackgroundColor3
+    local originalIconColor = DiscordIcon.ImageColor3
+    local TweenService = game:GetService("TweenService")
+    button.MouseEnter:Connect(function()
+        local buttonTween = TweenService:Create(
+            button,
+            TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+            {
+                Size = UDim2.new(button.Size.X.Scale, button.Size.X.Offset, 0, 50),
+                BackgroundColor3 = Color3.fromRGB(255, 94, 166)
+            }
+        )
+        buttonTween:Play()
+        local strokeTween = TweenService:Create(
+            DiscordStroke,
+            TweenInfo.new(0.4, Enum.EasingStyle.Quad),
+            {
+                Transparency = 0.2,
+                Thickness = 2
+            }
+        )
+        strokeTween:Play()
+        local iconTween = TweenService:Create(
+            DiscordIcon,
+            TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0.1),
+            {
+                Size = UDim2.new(0, 30, 0, 30),
+                Position = UDim2.new(0, 12.5, 0.5, -15),
+                ImageColor3 = Color3.fromRGB(255, 255, 100),
+                Rotation = 15
+            }
+        )
+        iconTween:Play()
+        local textTween = TweenService:Create(
+            DiscordText,
+            TweenInfo.new(0.3, Enum.EasingStyle.Quad),
+            {
+                Position = UDim2.new(0, 50, 0, 0),
+                TextColor3 = Color3.fromRGB(255, 255, 100)
+            }
+        )
+        textTween:Play()
+        local gradientTween = TweenService:Create(
+            DiscordGradient,
+            TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, true),
+            {Rotation = 90}
+        )
+        gradientTween:Play()
+    end)
+    button.MouseLeave:Connect(function()
+        local buttonTween = TweenService:Create(
+            button,
+            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {
+                Size = UDim2.new(button.Size.X.Scale, button.Size.X.Offset, 0, 45),
+                BackgroundColor3 = originalColor
+            }
+        )
+        buttonTween:Play()
+        local strokeTween = TweenService:Create(
+            DiscordStroke,
+            TweenInfo.new(0.3, Enum.EasingStyle.Quad),
+            {
+                Transparency = 0.8,
+                Thickness = 1
+            }
+        )
+        strokeTween:Play()
+        local iconTween = TweenService:Create(
+            DiscordIcon,
+            TweenInfo.new(0.3, Enum.EasingStyle.Back),
+            {
+                Size = UDim2.new(0, 25, 0, 25),
+                Position = UDim2.new(0, 15, 0.5, -12.5),
+                ImageColor3 = originalIconColor,
+                Rotation = 0
+            }
+        )
+        iconTween:Play()
+        local textTween = TweenService:Create(
+            DiscordText,
+            TweenInfo.new(0.3, Enum.EasingStyle.Quad),
+            {
+                Position = UDim2.new(0, 45, 0, 0),
+                TextColor3 = Color3.fromRGB(255, 255, 255)
+            }
+        )
+        textTween:Play()
+        local gradientTween = TweenService:Create(
+            DiscordGradient,
+            TweenInfo.new(0.3, Enum.EasingStyle.Quad),
+            {Rotation = 45}
+        )
+        gradientTween:Play()
+    end)
+end
+createHoverEffect(DiscordButton)
+DiscordButton.MouseButton1Click:Connect(function()
+    if W then
         setclipboard(W)
     end
+    local originalText = DiscordText.Text
+    DiscordText.Text = "✅ Discord Link Copied!"
+    local successTween = TweenService:Create(
+        DiscordText,
+        TweenInfo.new(0.2, Enum.EasingStyle.Back),
+        {TextColor3 = Color3.fromRGB(0, 255, 127)}
 )
-function Gui(_)
-    X.Enabled = _
+    successTween:Play()
+    wait(2)
+    DiscordText.Text = originalText
+    
+    local resetTween = TweenService:Create(
+        DiscordText,
+        TweenInfo.new(0.2, Enum.EasingStyle.Quad),
+        {TextColor3 = Color3.fromRGB(255, 255, 255)}
+    )
+    resetTween:Play()
+end)
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+local function updateInput(input)
+    local delta = input.Position - dragStart
+    local position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    TweenService:Create(MainFrame, TweenInfo.new(0.1), {Position = position}):Play()
+end
+HeaderFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+HeaderFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        updateInput(input)
+    end
+end)
+local function formatNumber(num)
+    if num >= 1000000000 then
+        return string.format("%.1fB", num / 1000000000)
+    elseif num >= 1000000 then
+        return string.format("%.1fM", num / 1000000)
+    elseif num >= 1000 then
+        return string.format("%.1fK", num / 1000)
+    else
+        return tostring(num)
+    end
+end
+local function formatTime(seconds)
+    local hours = math.floor(seconds / 3600)
+    local minutes = math.floor((seconds % 3600) / 60)
+    local secs = seconds % 60
+    return string.format("%02d:%02d:%02d", hours, minutes, secs)
+end
+local function loadSavedData()
+    local filePath = "Skull Hub/ChestCollect_INFO.json"
+    if isfile(filePath) then
+        local success, data = pcall(function()
+            local jsonData = readfile(filePath)
+            return game:GetService("HttpService"):JSONDecode(jsonData)
+        end)
+        
+        if success and data then
+            return data
+        else
+            print("Error loading saved data or file corrupted")
+            return nil
+        end
+    else
+        print("No saved data found, starting fresh")
+        return nil
+    end
+end
+local function saveStats(timeElapsed, beliEarned, initialBeli, sessionStartTime)
+    local data = {
+        TimeElapsed = timeElapsed,
+        BeliEarned = beliEarned,
+        InitialBeli = initialBeli,
+        SessionStartTime = sessionStartTime,
+        Timestamp = os.time()
+    }
+    if not isfolder("Skull Hub") then
+        makefolder("Skull Hub")
+    end
+    local success, err = pcall(function()
+        local jsonData = game:GetService("HttpService"):JSONEncode(data)
+        writefile("Skull Hub/ChestCollect_INFO.json", jsonData)
+    end)
+    if not success then
+        print("Error saving data:", err)
+    end
+end
+local savedData = loadSavedData()
+local sessionStartTime
+local totalTimeElapsed = 0
+local initialBeli
+if savedData then
+    totalTimeElapsed = savedData.TimeElapsed or 0
+    initialBeli = savedData.InitialBeli or game.Players.LocalPlayer.Data.Beli.Value
+    sessionStartTime = os.time()
+    print("Loaded saved data:")
+    print("- Total time elapsed:", formatTime(totalTimeElapsed))
+    print("- Initial Beli:", formatNumber(initialBeli))
+else
+    sessionStartTime = os.time()
+    totalTimeElapsed = 0
+    initialBeli = game.Players.LocalPlayer.Data.Beli.Value
+    getgenv().InitialBeli = initialBeli
+    print("Starting fresh session")
+    print("- Initial Beli:", formatNumber(initialBeli))
+end
+getgenv().InitialBeli = initialBeli
+local function updateStats()
+    spawn(function()
+        while X.Parent do
+            local currentSessionTime = os.time() - sessionStartTime
+            local totalTime = totalTimeElapsed + currentSessionTime
+            TimeValue.Text = formatTime(totalTime)
+            local currentBeli = game.Players.LocalPlayer.Data.Beli.Value
+            CurrentBeliValue.Text = formatNumber(currentBeli)
+            local beliEarned = currentBeli - initialBeli
+            BeliEarnedValue.Text = "+" .. formatNumber(beliEarned)
+            saveStats(totalTime, beliEarned, initialBeli, sessionStartTime)
+            wait(1)
+        end
+    end)
+end
+updateStats()
+spawn(function()
+    while X.Parent do
+        local timePulse = TweenService:Create(
+            TimeIcon,
+            TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+            {
+                Size = UDim2.new(0, 28, 0, 28),
+                ImageTransparency = 0.3
+            }
+        )
+        timePulse:Play()
+        local beliSpin = TweenService:Create(
+            CurrentBeliIcon,
+            TweenInfo.new(3, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+            {Rotation = 360}
+        )
+        beliSpin:Play()
+        local earnedBounce = TweenService:Create(
+            BeliEarnedIcon,
+            TweenInfo.new(2, Enum.EasingStyle.Bounce, Enum.EasingDirection.InOut, -1, true),
+            {
+                Position = UDim2.new(0.5, -12.5, 0, 5),
+                ImageColor3 = Color3.fromRGB(100, 255, 150)
+            }
+        )
+        earnedBounce:Play()
+        wait(0.1)
+    end
+end)
+function Gui(visible)
+    X.Enabled = visible
 end
 Gui(true)
 p.Idled:Connect(
@@ -908,12 +1429,7 @@ function AuraHaki()
         game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(cac))
     end
 end
-
-function TimerCheck()
-    local StartTime = os.time()
-    while true do
-        task.wait(1)
-        getgenv().FoundStop =
+getgenv().FoundStop =
             p.Backpack:FindFirstChild("Fist of Darkness") or p.Character:FindFirstChild("Fist of Darkness") or
             p.Backpack:FindFirstChild("Sweet Chalice") or
             p.Character:FindFirstChild("Sweet Chalice") or
@@ -925,6 +1441,11 @@ function TimerCheck()
             workspace.Enemies:FindFirstChild("Darkbeard [Lv. 1000] [Raid Boss]") or
             ReplicatedStorage:FindFirstChild("Dough King [Lv. 9999] [Raid Boss]") or
             workspace.Enemies:FindFirstChild("Dough King [Lv. 9999] [Raid Boss]")
+
+function TimerCheck()
+    local StartTime = os.time()
+    while true do
+        task.wait(1)
         if getgenv().FoundStop or getgenv().SH_Settings.MainConfig["Enable Farm"] == false then
             StartTime = os.time()
         elseif os.time() - StartTime >= getgenv().SH_Settings.Settings["Time Checker"] then
@@ -953,18 +1474,16 @@ task.spawn(
         pcall(TimerCheck)
     end
 )
-
 task.spawn(function()
     while true do
-        task.wait(2)
-        if getgenv().SH_Settings.Settings["Reset Anti Detect"] then
+        task.wait(getgenv().SH_Settings.Settings["Reset Time Delay"])
+        if getgenv().SH_Settings.MainConfig["Enable Farm"] and getgenv().SH_Settings.Settings["Reset Anti Detect"] and not getgenv().FoundStop then
             if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
                 game.Players.LocalPlayer.Character.Humanoid.Health = 0
             end
         end
     end
 end)
-
 task.spawn(
     function()
         pcall(
@@ -994,6 +1513,3 @@ while true do
     SendData()
     wait(60)
 end
-
-
-
