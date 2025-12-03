@@ -1,19 +1,10 @@
--- SH_Service Lua Client V4
--- - Anti-debug / anti-tamper
--- - Anti HTTP spy (detect Lua wrappers on request/http_request/syn.request/http.request)
--- - HTTP-layer encryption (blob) với XOR + Base64
--- - Verify token: check code, hwidHash, inner HMAC (HKDF + HMAC-SHA1)
-
 local Http = game:GetService("HttpService")
 local Analytics = game:GetService("RbxAnalyticsService")
 
--- ĐỔI THÀNH IP/DOMAIN + PORT CỦA BẠN
-local API_BASE = "http://217.154.114.227:9971/api"
+local API_BASE = "http://YOUR_IP_OR_DOMAIN:PORT/api"
 
--- Secret lớp HTTP phải trùng với HTTP_LAYER_SECRET bên Node
 local HTTP_LAYER_SECRET = "SH_HTTP_LAYER_2025_SECURE"
 
--- Tìm hàm request của executor
 local requestFunc = request
     or http_request
     or (http and http.request)
@@ -31,11 +22,9 @@ end
 local band = bit.band
 local bor  = bit.bor
 local bxor = bit.bxor
-local bnot = bit.bnot or function(a) return ~a end
+local bnot = bit.bnot or function(a) return bxor(a, 0xFFFFFFFF) end
 local lshift = bit.lshift
 local rshift = bit.rshift
-
--- ========== Helpers ==========
 
 local function getHWID()
     local ok, id = pcall(function()
@@ -65,9 +54,6 @@ local function randomNonce(len)
     return table.concat(out)
 end
 
--- ========== Anti-debug / anti-tamper ==========
-
--- snapshot globals
 local originalGlobals = {
     pairs = pairs,
     next = next,
@@ -109,28 +95,6 @@ local function checkPairsNext()
     return pc == 4 and nc == 4 and px == nx
 end
 
-local function checkGlobalsType()
-    local env = getfenv and getfenv() or _G
-
-    local function check(name)
-        local v = env[name]
-        local tv = type(v)
-        if tv == "nil" then
-            return true
-        end
-        if tv == "string" or tv == "number" or tv == "boolean" then
-            return false
-        end
-        return true
-    end
-
-    if not check("pairs") then return false, "GLOBAL_MUTATED" end
-    if not check("next")  then return false, "GLOBAL_MUTATED" end
-    if not check("pcall") then return false, "GLOBAL_MUTATED" end
-
-    return true
-end
-
 local function checkOriginalRefs()
     if originalGlobals.pairs and originalGlobals.pairs ~= pairs then
         return false, "GLOBAL_PAIRS_CHANGED"
@@ -157,7 +121,6 @@ local function checkMetatableLock()
     return not ok
 end
 
--- Anti HTTP spy: check request/http_request/syn.request/http.request có phải Lua wrapper
 local debugLib = debug
 
 local function detectHttpSpy()
@@ -225,11 +188,6 @@ local function antiDebug()
         return false, "ENV_HOOKED"
     end
 
-    local okType, errType = checkGlobalsType()
-    if not okType then
-        return false, errType
-    end
-
     local okRefs, errRefs = checkOriginalRefs()
     if not okRefs then
         return false, errRefs
@@ -241,7 +199,7 @@ local function antiDebug()
 
     local snap = snapshotGlobals()
     task.spawn(function() local _ = 1 + 1 end)
-    task.wait()
+    task.wait(0.1)
     local okInject, name = detectGlobalInject(snap)
     if not okInject then
         return false, "GLOBAL_INJECT_" .. tostring(name)
@@ -254,8 +212,6 @@ local function antiDebug()
 
     return true
 end
-
--- ========== HTTP-layer encryption (blob) ==========
 
 local function xorCrypt(str, key)
     local klen = #key
@@ -275,8 +231,6 @@ local function makeBlob(tbl)
     return b64
 end
 
--- ========== Base64url helpers (dùng HttpService) ==========
-
 local function b64url_encode(raw)
     local std = Http:Base64Encode(raw)
     std = std:gsub("%+", "-"):gsub("/", "_"):gsub("=", "")
@@ -293,12 +247,10 @@ local function b64url_decode(data)
         return Http:Base64Decode(data)
     end)
     if not ok then
-        return nil
+        return nil, decoded
     end
     return decoded
 end
-
--- ========== SHA-1 / HMAC / HKDF (client-side token verify) ==========
 
 local function leftrotate(x, n)
     return band(lshift(x, n), 0xFFFFFFFF) + rshift(x, 32 - n)
@@ -308,15 +260,12 @@ local function sha1(msg)
     local bytes = { msg:byte(1, #msg) }
     local original_len_in_bits = #bytes * 8
 
-    -- append '1' bit
     table.insert(bytes, 0x80)
 
-    -- pad with zeros until length % 64 == 56
     while (#bytes % 64) ~= 56 do
         table.insert(bytes, 0x00)
     end
 
-    -- append length in bits (64 bits big‑endian)
     local high = math.floor(original_len_in_bits / 2^32)
     local low  = original_len_in_bits % 2^32
     local function append_word(w)
@@ -442,19 +391,17 @@ local function secure_compare(a, b)
     if type(a) ~= "string" or type(b) ~= "string" then
         return false
     end
-    local len_a = #a
-    local len_b = #b
+    if #a ~= #b then
+        return false
+    end
     local result = 0
-    local max_len = math.max(len_a, len_b)
-    for i = 1, max_len do
-        local ca = string.byte(a, i) or 0
-        local cb = string.byte(b, i) or 0
+    for i = 1, #a do
+        local ca = string.byte(a, i)
+        local cb = string.byte(b, i)
         result = bor(result, bxor(ca, cb))
     end
-    return result == 0 and len_a == len_b
+    return result == 0
 end
-
--- ========== Token parse & verify ==========
 
 local function parseAndVerifyToken(token, key, hwid, nonce)
     if type(token) ~= "string" then
@@ -468,7 +415,6 @@ local function parseAndVerifyToken(token, key, hwid, nonce)
 
     local payloadRaw = b64url_decode(p1)
     local sig1Raw    = b64url_decode(p2)
-    -- p3 là outer HMAC bằng SECRET_MAIN, client không biết => không verify
 
     if not payloadRaw or not sig1Raw then
         return nil, "B64_DECODE_FAIL"
@@ -486,13 +432,11 @@ local function parseAndVerifyToken(token, key, hwid, nonce)
         return nil, "PAYLOAD_BAD_CODE"
     end
 
-    -- Verify hwidHash
     local hwidHashLocal = b64url_encode(sha1(hwid))
     if payload.hwidHash ~= hwidHashLocal then
         return nil, "HWID_HASH_MISMATCH"
     end
 
-    -- Verify inner HMAC (HKDF + HMAC-SHA1)
     local clientKey = hkdf_sha1(
         key .. "|" .. hwid,
         sha1(key .. "|SALT"),
@@ -507,8 +451,6 @@ local function parseAndVerifyToken(token, key, hwid, nonce)
 
     return payload
 end
-
--- ========== MAIN AUTH ==========
 
 local function authSH()
     local key = getgenv().SH_Service_Key
@@ -556,6 +498,11 @@ local function authSH()
         return false
     end
 
+    if resp.StatusCode ~= 200 then
+        print("Auth Failed:", "HTTP_" .. tostring(resp.StatusCode))
+        return false
+    end
+
     local data
     local okJson = pcall(function()
         data = Http:JSONDecode(resp.Body)
@@ -570,13 +517,17 @@ local function authSH()
         return false
     end
 
+    if not data.token then
+        print("Auth Failed:", "NO_TOKEN_IN_RESPONSE")
+        return false
+    end
+
     local payload, perr = parseAndVerifyToken(data.token, key, hwid, nonce)
     if not payload then
         print("Auth Failed:", "TOKEN_FAIL_" .. tostring(perr))
         return false
     end
 
-    -- Lưu token nếu bạn cần cho các request khác
     getgenv().SH_Service_Token = data.token
 
     print("Auth")
