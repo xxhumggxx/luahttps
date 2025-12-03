@@ -1,7 +1,7 @@
 local Http = game:GetService("HttpService")
 local Analytics = game:GetService("RbxAnalyticsService")
 
-local API_BASE = "http://YOUR_IP_OR_DOMAIN:PORT/api"
+local API_BASE = "http://217.154.114.227:9971/api"
 
 local HTTP_LAYER_SECRET = "SH_HTTP_LAYER_2025_SECURE"
 
@@ -233,23 +233,35 @@ end
 
 local function b64url_encode(raw)
     local std = Http:Base64Encode(raw)
-    std = std:gsub("%+", "-"):gsub("/", "_"):gsub("=", "")
+    std = std:gsub("%+", "-"):gsub("/", "_"):gsub("=+$", "")
     return std
 end
 
 local function b64url_decode(data)
+    if not data or type(data) ~= "string" or #data == 0 then
+        return nil, "EMPTY_INPUT"
+    end
+    
     data = data:gsub("-", "+"):gsub("_", "/")
-    local padding = #data % 4
-    if padding ~= 0 then
+    
+    local padding = (#data) % 4
+    if padding > 0 then
         data = data .. string.rep("=", 4 - padding)
     end
-    local ok, decoded = pcall(function()
+    
+    local ok, result = pcall(function()
         return Http:Base64Decode(data)
     end)
+    
     if not ok then
-        return nil, decoded
+        return nil, "DECODE_ERROR"
     end
-    return decoded
+    
+    if not result or #result == 0 then
+        return nil, "EMPTY_RESULT"
+    end
+    
+    return result
 end
 
 local function leftrotate(x, n)
@@ -404,7 +416,7 @@ local function secure_compare(a, b)
 end
 
 local function parseAndVerifyToken(token, key, hwid, nonce)
-    if type(token) ~= "string" then
+    if type(token) ~= "string" or #token == 0 then
         return nil, "NO_TOKEN"
     end
 
@@ -413,11 +425,14 @@ local function parseAndVerifyToken(token, key, hwid, nonce)
         return nil, "BAD_FORMAT"
     end
 
-    local payloadRaw = b64url_decode(p1)
-    local sig1Raw    = b64url_decode(p2)
+    local payloadRaw, err1 = b64url_decode(p1)
+    if not payloadRaw then
+        return nil, "B64_DECODE_P1_" .. tostring(err1)
+    end
 
-    if not payloadRaw or not sig1Raw then
-        return nil, "B64_DECODE_FAIL"
+    local sig1Raw, err2 = b64url_decode(p2)
+    if not sig1Raw then
+        return nil, "B64_DECODE_P2_" .. tostring(err2)
     end
 
     local payload
@@ -517,7 +532,7 @@ local function authSH()
         return false
     end
 
-    if not data.token then
+    if not data.token or type(data.token) ~= "string" or #data.token == 0 then
         print("Auth Failed:", "NO_TOKEN_IN_RESPONSE")
         return false
     end
