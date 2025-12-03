@@ -224,15 +224,88 @@ local function xorCrypt(str, key)
     return table.concat(out)
 end
 
+local base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+local function manual_base64_encode(data)
+    local result = {}
+    local padding = ""
+    
+    for i = 1, #data, 3 do
+        local b1 = string.byte(data, i)
+        local b2 = string.byte(data, i + 1)
+        local b3 = string.byte(data, i + 2)
+        
+        local n = lshift(b1, 16) + lshift(b2 or 0, 8) + (b3 or 0)
+        
+        local c1 = rshift(band(n, 0xFC0000), 18) + 1
+        local c2 = rshift(band(n, 0x03F000), 12) + 1
+        local c3 = rshift(band(n, 0x000FC0), 6) + 1
+        local c4 = band(n, 0x00003F) + 1
+        
+        table.insert(result, string.sub(base64_chars, c1, c1))
+        table.insert(result, string.sub(base64_chars, c2, c2))
+        
+        if b2 then
+            table.insert(result, string.sub(base64_chars, c3, c3))
+        else
+            table.insert(result, "=")
+        end
+        
+        if b3 then
+            table.insert(result, string.sub(base64_chars, c4, c4))
+        else
+            table.insert(result, "=")
+        end
+    end
+    
+    return table.concat(result)
+end
+
+local function manual_base64_decode(data)
+    data = data:gsub("[^" .. base64_chars .. "=]", "")
+    
+    local result = {}
+    
+    for i = 1, #data, 4 do
+        local c1 = string.find(base64_chars, string.sub(data, i, i)) or 1
+        local c2 = string.find(base64_chars, string.sub(data, i + 1, i + 1)) or 1
+        local c3 = string.find(base64_chars, string.sub(data, i + 2, i + 2)) or 1
+        local c4 = string.find(base64_chars, string.sub(data, i + 3, i + 3)) or 1
+        
+        c1 = c1 - 1
+        c2 = c2 - 1
+        c3 = c3 - 1
+        c4 = c4 - 1
+        
+        local n = lshift(c1, 18) + lshift(c2, 12) + lshift(c3, 6) + c4
+        
+        local b1 = band(rshift(n, 16), 0xFF)
+        local b2 = band(rshift(n, 8), 0xFF)
+        local b3 = band(n, 0xFF)
+        
+        table.insert(result, string.char(b1))
+        
+        if string.sub(data, i + 2, i + 2) ~= "=" then
+            table.insert(result, string.char(b2))
+        end
+        
+        if string.sub(data, i + 3, i + 3) ~= "=" then
+            table.insert(result, string.char(b3))
+        end
+    end
+    
+    return table.concat(result)
+end
+
 local function makeBlob(tbl)
     local json = Http:JSONEncode(tbl)
     local xored = xorCrypt(json, HTTP_LAYER_SECRET)
-    local b64 = Http:Base64Encode(xored)
+    local b64 = manual_base64_encode(xored)
     return b64
 end
 
 local function b64url_encode(raw)
-    local std = Http:Base64Encode(raw)
+    local std = manual_base64_encode(raw)
     std = std:gsub("%+", "-"):gsub("/", "_"):gsub("=+$", "")
     return std
 end
@@ -250,7 +323,7 @@ local function b64url_decode(data)
     end
     
     local ok, result = pcall(function()
-        return Http:Base64Decode(data)
+        return manual_base64_decode(data)
     end)
     
     if not ok then
