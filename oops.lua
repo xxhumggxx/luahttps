@@ -8,7 +8,7 @@ local Http = game:GetService("HttpService")
 local Analytics = game:GetService("RbxAnalyticsService")
 
 -- ĐỔI THÀNH IP/DOMAIN + PORT CỦA BẠN
-local API_BASE = "http://YOUR_IP_OR_DOMAIN:PORT/api"
+local API_BASE = "http://217.154.114.227:9971/api"
 
 -- Secret lớp HTTP phải trùng với HTTP_LAYER_SECRET bên Node
 local HTTP_LAYER_SECRET = "SH_HTTP_LAYER_2025_SECURE"
