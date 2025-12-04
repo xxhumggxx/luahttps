@@ -2,7 +2,7 @@ local Http = game:GetService("HttpService")
 local Analytics = game:GetService("RbxAnalyticsService")
 
 local API_BASE = "http://217.154.114.227:9971/api"
-local HTTP_LAYER_SECRET = "SH_HTTP_LAYER_2025_SECURE_PROD_ONLY"
+local HTTP_LAYER_SECRET = "NUIdfF2AkTVaxEjZshBjVUcdm"
 
 local requestFunc = request
     or http_request
