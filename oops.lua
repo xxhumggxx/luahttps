@@ -13,9 +13,9 @@ if not __bit then error("SH_Service: bit lib missing") end
 local band, bor, bxor, rshift, lshift = __bit.band, __bit.bor, __bit.bxor, __bit.rshift, __bit.lshift
 local bnot = __bit.bnot or function(a) return bxor(a, 0xFFFFFFFF) end
 
-local function rr(x,n)
-    n=n%32
-    return bor(rshift(x,n), lshift(band(x,0xFFFFFFFF), 32-n))
+local function rrotate32(x, n)
+    n = n % 32
+    return bor(rshift(x, n), lshift(band(x, 0xFFFFFFFF), 32 - n))
 end
 
 local function _junk()
@@ -79,10 +79,7 @@ local function b64u_dec(s)
     if p>0 then s=s..string.rep("=",4-p) end
     return b64d(s)
 end
-local function rrotate32(x, n)
-    n = n % 32
-    return bor(rshift(x, n), lshift(band(x, 0xFFFFFFFF), 32 - n))
-end
+
 local sha256_k = {
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
     0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
@@ -181,12 +178,8 @@ local function sha256(msg)
 end
 
 local function hmac_sha256(key, msg)
-    if #key > 64 then
-        key = sha256(key)
-    end
-    if #key < 64 then
-        key = key .. string.rep("\0", 64 - #key)
-    end
+    if #key > 64 then key = sha256(key) end
+    if #key < 64 then key = key .. string.rep("\0", 64 - #key) end
 
     local o_key_pad = {}
     local i_key_pad = {}
@@ -206,12 +199,9 @@ end
 
 local function hkdf_sha256(ikm, salt, info, length)
     local HASH_LEN = 32
-    if #salt == 0 then
-        salt = string.rep("\0", HASH_LEN)
-    end
+    if #salt == 0 then salt = string.rep("\0", HASH_LEN) end
     local prk = hmac_sha256(salt, ikm)
-    local okm = ""
-    local t = ""
+    local okm, t = "", ""
     local blocks = math.ceil(length / HASH_LEN)
     for i = 1, blocks do
         t = hmac_sha256(prk, t .. info .. string.char(i))
@@ -288,19 +278,19 @@ __  __ ____
         print("Auth Failed:", ch.status or "CHALLENGE_BAD") return false
     end
 
-    local session=ch.session
-    local nonce_s=b64u_dec(ch.nonce_s)
-    local salt=b64u_dec(ch.salt)
-    local expMs=(ch.exp or 0)*1000
+    local session = ch.session
+    local nonce_s = ch.nonce_s      -- FIX: giữ nguyên b64u string
+    local salt = b64u_dec(ch.salt)  -- salt decode ra raw bytes
+    local expSec = ch.exp or 0      -- FIX: exp seconds
 
     local cnRaw=_S:GenerateGUID(false).."|"..tostring(os.clock()).."|"..tostring(tick())
     local clientNonce=b64u_enc(sha256(cnRaw))
 
-    local ikm=key.."|"..hwidHash.."|"..clientNonce.."|"..nonce_s
-    local clientKey=hkdf_sha256(ikm, salt, "AUTHv2", 32)
+    local ikm = key.."|"..hwidHash.."|"..clientNonce.."|"..nonce_s
+    local clientKey = hkdf_sha256(ikm, salt, "AUTHv2", 32)
 
-    local proofMsg=session.."|"..tostring(expMs).."|"..hwidHash
-    local proof=b64u_enc(hmac_sha256(clientKey, proofMsg))
+    local proofMsg = session.."|"..tostring(expSec).."|"..hwidHash
+    local proof = b64u_enc(hmac_sha256(clientKey, proofMsg))
 
     local vResp=__rq({
         Url=__API.."/verify",
