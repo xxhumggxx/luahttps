@@ -1,7 +1,7 @@
 local _S = game:GetService("HttpService")
 local _A = game:GetService("RbxAnalyticsService")
 
-local __API = "https://your-domain.com/api"
+local __API = "http://217.154.114.227:9971/api"
 local __AUD = "SH_Project"
 local __ISS = "SH_Service"
 
