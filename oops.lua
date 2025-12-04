@@ -1,312 +1,83 @@
-local Http = game:GetService("HttpService")
-local Analytics = game:GetService("RbxAnalyticsService")
+local _S = game:GetService("HttpService")
+local _A = game:GetService("RbxAnalyticsService")
 
-local API_BASE = "http://217.154.114.227:9971/api"
-local HTTP_LAYER_SECRET = "NUIdfF2AkTVaxEjZshBjVUcdm"
+local __API = "http://217.154.114.227:9971/api"
+local __AUD = "SH_Project"
+local __ISS = "SH_Service"
 
-local requestFunc = request
-    or http_request
-    or (http and http.request)
-    or (syn and syn.request)
+local __rq = request or http_request or (http and http.request) or (syn and syn.request)
+if not __rq then error("SH_Service: HTTP request missing") end
 
-if not requestFunc then
-    error("SH_Service: no HTTP request function (request/http_request/syn.request/http.request)")
+local __bit = bit32 or bit
+if not __bit then error("SH_Service: bit lib missing") end
+local band, bor, bxor, rshift, lshift = __bit.band, __bit.bor, __bit.bxor, __bit.rshift, __bit.lshift
+local bnot = __bit.bnot or function(a) return bxor(a, 0xFFFFFFFF) end
+
+local function rr(x,n)
+    n=n%32
+    return bor(rshift(x,n), lshift(band(x,0xFFFFFFFF), 32-n))
 end
 
-local bit = bit32 or bit
-if not bit then
-    error("SH_Service: bit32/bit library not found (required for crypto)")
+local function _junk()
+    local t = 0
+    for i=1,2 do t = bxor(t, i*7) end
+    return t
+end
+local __J = _junk()
+
+local function _hw()
+    local ok, id = pcall(function() return _A:GetClientId() end)
+    if ok and type(id)=="string" and #id>=10 then
+        id = id:gsub("[^a-zA-Z0-9_%-]","")
+        if #id>=10 and #id<=128 then return id end
+    end
+    return "FALLBACK_"..tostring(math.random(100000,999999))
 end
 
-local band = bit.band
-local bor  = bit.bor
-local bxor = bit.bxor
-local bnot = bit.bnot or function(a) return bxor(a, 0xFFFFFFFF) end
-local lshift = bit.lshift
-local rshift = bit.rshift
-local rrotate = bit.rrotate or function(x, n) return bor(rshift(x, n), lshift(x, 32 - n)) end
-
-local function getHWID()
-    local ok, id = pcall(function()
-        return Analytics:GetClientId()
-    end)
-    if ok and id and type(id) == "string" and #id >= 10 then
-        id = id:gsub("[^a-zA-Z0-9_%-]", "")
-        if #id >= 10 and #id <= 128 then
-            return id
-        end
+local B64="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+local function b64e(data)
+    local r={}
+    for i=1,#data,3 do
+        local b1=string.byte(data,i)
+        local b2=string.byte(data,i+1)
+        local b3=string.byte(data,i+2)
+        local n=lshift(b1,16)+lshift(b2 or 0,8)+(b3 or 0)
+        local c1=rshift(band(n,0xFC0000),18)+1
+        local c2=rshift(band(n,0x03F000),12)+1
+        local c3=rshift(band(n,0x000FC0),6)+1
+        local c4=band(n,0x00003F)+1
+        r[#r+1]=B64:sub(c1,c1)
+        r[#r+1]=B64:sub(c2,c2)
+        r[#r+1]=b2 and B64:sub(c3,c3) or "="
+        r[#r+1]=b3 and B64:sub(c4,c4) or "="
     end
-    return "FALLBACK_" .. tostring(math.random(100000, 999999))
+    return table.concat(r)
 end
-
-local function randomNonce(len)
-    len = len or 32
-    local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    local out = table.create(len)
-    local sum = 0
-    for i = 1, len do
-        local idx = math.random(1, #chars)
-        local ch = string.sub(chars, idx, idx)
-        out[i] = ch
-        sum = sum + string.byte(ch)
+local function b64d(data)
+    data=data:gsub("[^"..B64.."=]","")
+    local r={}
+    for i=1,#data,4 do
+        local c1=string.find(B64,data:sub(i,i)) or 1
+        local c2=string.find(B64,data:sub(i+1,i+1)) or 1
+        local c3=string.find(B64,data:sub(i+2,i+2)) or 1
+        local c4=string.find(B64,data:sub(i+3,i+3)) or 1
+        c1,c2,c3,c4=c1-1,c2-1,c3-1,c4-1
+        local n=lshift(c1,18)+lshift(c2,12)+lshift(c3,6)+c4
+        local b1=band(rshift(n,16),0xFF)
+        local b2=band(rshift(n,8),0xFF)
+        local b3=band(n,0xFF)
+        r[#r+1]=string.char(b1)
+        if data:sub(i+2,i+2)~="=" then r[#r+1]=string.char(b2) end
+        if data:sub(i+3,i+3)~="=" then r[#r+1]=string.char(b3) end
     end
-    local mean = sum / len
-    if mean < 40 or mean > 120 then
-        return nil, "RNG_ENTROPY_BAD"
-    end
-    return table.concat(out)
+    return table.concat(r)
 end
-
-local originalGlobals = {
-    pairs = pairs,
-    next = next,
-    pcall = pcall,
-    task_spawn = task and task.spawn,
-    coroutine_wrap = coroutine and coroutine.wrap,
-}
-
-local function timingProbe()
-    local loops = 3
-    local total = 0
-    for _ = 1, loops do
-        local t0 = tick()
-        local acc = 0
-        for i = 1, 200000 do
-            acc = acc + i
-        end
-        local dt = tick() - t0
-        total = total + dt
-    end
-    local avg = total / loops
-    return avg < 0.8, avg
-end
-
-local function checkPairsNext()
-    local t = { a = 1, b = 2, c = 3, d = 4 }
-    local pc, nc, px, nx = 0, 0, 0, 0
-
-    for k, v in pairs(t) do
-        pc = pc + 1
-        px = bxor(px, string.byte(k) + v)
-    end
-
-    for k, v in next, t do
-        nc = nc + 1
-        nx = bxor(nx, string.byte(k) + v)
-    end
-
-    return pc == 4 and nc == 4 and px == nx
-end
-
-local function checkOriginalRefs()
-    if originalGlobals.pairs and originalGlobals.pairs ~= pairs then
-        return false, "GLOBAL_PAIRS_CHANGED"
-    end
-    if originalGlobals.next and originalGlobals.next ~= next then
-        return false, "GLOBAL_NEXT_CHANGED"
-    end
-    if originalGlobals.pcall and originalGlobals.pcall ~= pcall then
-        return false, "GLOBAL_PCALL_CHANGED"
-    end
-    if originalGlobals.task_spawn and task and originalGlobals.task_spawn ~= task.spawn then
-        return false, "GLOBAL_TASK_CHANGED"
-    end
-    if originalGlobals.coroutine_wrap and coroutine and originalGlobals.coroutine_wrap ~= coroutine.wrap then
-        return false, "GLOBAL_COROUTINE_CHANGED"
-    end
-    return true
-end
-
-local function checkMetatableLock()
-    local t = {}
-    setmetatable(t, { __metatable = "LOCKED" })
-    local ok = pcall(setmetatable, t, {})
-    return not ok
-end
-
-local debugLib = debug
-
-local function detectHttpSpy()
-    if not debugLib or type(debugLib.getinfo) ~= "function" then
-        return true
-    end
-
-    local suspects = {}
-
-    if request then
-        table.insert(suspects, { name = "request", fn = request })
-    end
-    if http_request then
-        table.insert(suspects, { name = "http_request", fn = http_request })
-    end
-    if syn and syn.request then
-        table.insert(suspects, { name = "syn.request", fn = syn.request })
-    end
-    if http and http.request then
-        table.insert(suspects, { name = "http.request", fn = http.request })
-    end
-
-    for _, s in ipairs(suspects) do
-        local name, fn = s.name, s.fn
-        if type(fn) == "function" then
-            local ok, info = pcall(debugLib.getinfo, fn, "S")
-            if ok and info and info.what == "Lua" then
-                return false, "HTTP_SPY_WRAPPER(" .. name .. ")"
-            end
-        end
-    end
-
-    return true
-end
-
-local function snapshotGlobals()
-    local env = getfenv and getfenv() or _G
-    local snap = {}
-    for k in pairs(env) do
-        snap[k] = true
-    end
-    return snap
-end
-
-local function detectGlobalInject(before)
-    local env = getfenv and getfenv() or _G
-    for k in pairs(env) do
-        if not before[k]
-            and k ~= "SH_Service_Key"
-            and k ~= "SH_Service_Token"
-        then
-            return false, k
-        end
-    end
-    return true
-end
-
-local function antiDebug()
-    local okTime = timingProbe()
-    if not okTime then
-        return false, "TIMING_DEBUG"
-    end
-
-    if not checkPairsNext() then
-        return false, "ENV_HOOKED"
-    end
-
-    local okRefs, errRefs = checkOriginalRefs()
-    if not okRefs then
-        return false, errRefs
-    end
-
-    if not checkMetatableLock() then
-        return false, "MT_UNLOCKED"
-    end
-
-    local snap = snapshotGlobals()
-    task.spawn(function() local _ = 1 + 1 end)
-    task.wait(0.1)
-    local okInject, name = detectGlobalInject(snap)
-    if not okInject then
-        return false, "GLOBAL_INJECT_" .. tostring(name)
-    end
-
-    local okSpy, errSpy = detectHttpSpy()
-    if not okSpy then
-        return false, errSpy or "HTTP_SPY_DETECTED"
-    end
-
-    return true
-end
-
-local function xorCrypt(str, key)
-    local klen = #key
-    local out = table.create(#str)
-    for i = 1, #str do
-        local c = string.byte(str, i)
-        local k = string.byte(key, ((i - 1) % klen) + 1)
-        out[i] = string.char(bxor(c, k))
-    end
-    return table.concat(out)
-end
-
-local base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-
-local function manual_base64_encode(data)
-    local result = {}
-    for i = 1, #data, 3 do
-        local b1 = string.byte(data, i)
-        local b2 = string.byte(data, i + 1)
-        local b3 = string.byte(data, i + 2)
-
-        local n = lshift(b1, 16) + lshift(b2 or 0, 8) + (b3 or 0)
-
-        local c1 = rshift(band(n, 0xFC0000), 18) + 1
-        local c2 = rshift(band(n, 0x03F000), 12) + 1
-        local c3 = rshift(band(n, 0x000FC0), 6) + 1
-        local c4 = band(n, 0x00003F) + 1
-
-        table.insert(result, string.sub(base64_chars, c1, c1))
-        table.insert(result, string.sub(base64_chars, c2, c2))
-        if b2 then table.insert(result, string.sub(base64_chars, c3, c3)) else table.insert(result, "=") end
-        if b3 then table.insert(result, string.sub(base64_chars, c4, c4)) else table.insert(result, "=") end
-    end
-    return table.concat(result)
-end
-
-local function manual_base64_decode(data)
-    data = data:gsub("[^" .. base64_chars .. "=]", "")
-    local result = {}
-    for i = 1, #data, 4 do
-        local c1 = string.find(base64_chars, string.sub(data, i, i)) or 1
-        local c2 = string.find(base64_chars, string.sub(data, i + 1, i + 1)) or 1
-        local c3 = string.find(base64_chars, string.sub(data, i + 2, i + 2)) or 1
-        local c4 = string.find(base64_chars, string.sub(data, i + 3, i + 3)) or 1
-        c1, c2, c3, c4 = c1 - 1, c2 - 1, c3 - 1, c4 - 1
-        local n = lshift(c1, 18) + lshift(c2, 12) + lshift(c3, 6) + c4
-        local b1 = band(rshift(n, 16), 0xFF)
-        local b2 = band(rshift(n, 8), 0xFF)
-        local b3 = band(n, 0xFF)
-        table.insert(result, string.char(b1))
-        if string.sub(data, i + 2, i + 2) ~= "=" then table.insert(result, string.char(b2)) end
-        if string.sub(data, i + 3, i + 3) ~= "=" then table.insert(result, string.char(b3)) end
-    end
-    return table.concat(result)
-end
-
-local function b64url_encode(raw)
-    local std = manual_base64_encode(raw)
-    std = std:gsub("%+", "-"):gsub("/", "_"):gsub("=+$", "")
-    return std
-end
-
-local function b64url_decode(data)
-    if not data or type(data) ~= "string" or #data == 0 then
-        return nil, "EMPTY_INPUT"
-    end
-    data = data:gsub("-", "+"):gsub("_", "/")
-    local padding = (#data) % 4
-    if padding > 0 then
-        data = data .. string.rep("=", 4 - padding)
-    end
-    local ok, result = pcall(function()
-        return manual_base64_decode(data)
-    end)
-    if not ok then
-        return nil, "DECODE_ERROR"
-    end
-    if not result or #result == 0 then
-        return nil, "EMPTY_RESULT"
-    end
-    return result
-end
-
-local function makeBlob(tbl)
-    local json = Http:JSONEncode(tbl)
-    local xored = xorCrypt(json, HTTP_LAYER_SECRET)
-    local b64 = manual_base64_encode(xored)
-    return b64
-end
-
-local function rrotate32(x, n)
-    return bor(rshift(x, n), lshift(band(x, 0xFFFFFFFF), 32 - n))
+local function b64u_enc(raw) return b64e(raw):gsub("%+","-"):gsub("/","_"):gsub("=+$","") end
+local function b64u_dec(s)
+    s=s:gsub("-","+"):gsub("_","/")
+    local p=#s%4
+    if p>0 then s=s..string.rep("=",4-p) end
+    return b64d(s)
 end
 
 local sha256_k = {
@@ -446,170 +217,138 @@ local function hkdf_sha256(ikm, salt, info, length)
     return string.sub(okm, 1, length)
 end
 
-local function secure_compare(a, b)
-    if type(a) ~= "string" or type(b) ~= "string" then
-        return false
-    end
-    if #a ~= #b then
-        return false
-    end
-    local result = 0
-    for i = 1, #a do
-        local ca = string.byte(a, i)
-        local cb = string.byte(b, i)
-        result = bor(result, bxor(ca, cb))
-    end
-    return result == 0
-end
-
-local function parseAndVerifyToken(token, key, hwid, nonce)
-    if type(token) ~= "string" or #token == 0 then
-        return nil, "NO_TOKEN"
-    end
-
-    local p1, p2, p3 = token:match("([^%.]+)%.([^%.]+)%.([^%.]+)")
-    if not p1 or not p2 or not p3 then
-        return nil, "BAD_FORMAT"
-    end
-
-    local payloadRaw, err1 = b64url_decode(p1)
-    if not payloadRaw then
-        return nil, "B64_DECODE_P1_" .. tostring(err1)
-    end
-
-    local sig1Raw, err2 = b64url_decode(p2)
-    if not sig1Raw then
-        return nil, "B64_DECODE_P2_" .. tostring(err2)
-    end
-
-    local payload
-    local ok = pcall(function()
-        payload = Http:JSONDecode(payloadRaw)
-    end)
-    if not ok or type(payload) ~= "table" then
-        return nil, "PAYLOAD_JSON_FAIL"
-    end
-
-    if payload.code ~= "AUTH_OK" then
-        return nil, "PAYLOAD_BAD_CODE"
-    end
-
-    local hwidHashLocal = b64url_encode(sha256(hwid))
-    if payload.hwidHash ~= hwidHashLocal then
-        return nil, "HWID_HASH_MISMATCH"
-    end
-
-    local clientKey = hkdf_sha256(
-        key .. "|" .. hwid,
-        sha256(key .. "|SALT"),
-        nonce,
-        32
-    )
-
-    local expectedSig1 = hmac_sha256(clientKey, payloadRaw)
-    if not secure_compare(sig1Raw, expectedSig1) then
-        return nil, "SIG1_MISMATCH"
-    end
-
-    if payload.exp then
-        local currentTime = math.floor(os.time())
-        if currentTime > payload.exp then
-            return nil, "TOKEN_EXPIRED"
+local dbg=debug
+local function _spy()
+    if not dbg or type(dbg.getinfo)~="function" then return true end
+    local L={}
+    if request then L[#L+1]=request end
+    if http_request then L[#L+1]=http_request end
+    if syn and syn.request then L[#L+1]=syn.request end
+    if http and http.request then L[#L+1]=http.request end
+    for _,fn in ipairs(L) do
+        local ok,info=pcall(dbg.getinfo,fn,"S")
+        if ok and info and info.what=="Lua" then
+            return false,"HTTP_SPY_WRAPPER"
         end
     end
+    return true
+end
 
+local function _parse(token, hwidHash)
+    local p1,p2,p3=token:match("([^%.]+)%.([^%.]+)%.([^%.]+)")
+    if not p1 or not p2 or not p3 then return nil,"BAD_FORMAT" end
+    local payloadRaw=b64u_dec(p1)
+    local payload=_S:JSONDecode(payloadRaw)
+    if type(payload)~="table" then return nil,"BAD_PAYLOAD" end
+    if payload.code~="SH_Service_OK" then return nil,"BAD_CODE" end
+    if payload.hwidHash~=hwidHash then return nil,"HWID_HASH_MISMATCH" end
+    if payload.iss~=__ISS then return nil,"ISS_MISMATCH" end
+    if payload.aud~=__AUD then return nil,"AUD_MISMATCH" end
+    if payload.exp and os.time()>payload.exp then return nil,"TOKEN_EXPIRED" end
     return payload
 end
 
 local function authSH()
-    local key = getgenv().SH_Service_Key
-    if type(key) ~= "string" or #key < 5 then
-        print("Auth Failed:", "INVALID_LOCAL_KEY")
-        return false
+    local t0=tick()
+    print([==[
+SH_Service Auth SDK v2
+__  __ ____ 
+\ \/ /|  _ \
+ \  / | | | |
+ /  \ | |_| |
+/_/\_\|____/
+]==])
+
+    local key=getgenv().SH_Service_Key
+    if type(key)~="string" or not key:match("^[A-F0-9]+$") or #key~=32 then
+        print("Auth Failed: KEY_FORMAT_INVALID") return false
     end
 
-    if not key:match("^[A-F0-9]+$") or #key ~= 32 then
-        print("Auth Failed:", "KEY_FORMAT_INVALID")
-        return false
-    end
+    local okSpy,why=_spy()
+    if not okSpy then print("Auth Failed:",why) return false end
 
-    local okAnti, reason = antiDebug()
-    if not okAnti then
-        print("Auth Failed:", reason)
-        return false
-    end
+    local hwid=_hw()
+    local hwidHash=b64u_enc(sha256(hwid))
 
-    local nonce, nErr = randomNonce(32)
-    if not nonce then
-        print("Auth Failed:", nErr or "NONCE_FAIL")
-        return false
-    end
-
-    local hwid = getHWID()
-
-    local blob = makeBlob({
-        key = key,
-        hwid = hwid,
-        nonce = nonce,
+    local chResp=__rq({
+        Url=__API.."/challenge",
+        Method="POST",
+        Headers={["Content-Type"]="application/json"},
+        Body=_S:JSONEncode({hwidHash=hwidHash})
     })
+    if not chResp or chResp.StatusCode~=200 then
+        print("Auth Failed: CHALLENGE_HTTP_FAIL") return false
+    end
 
-    local resp
-    local okReq, errReq = pcall(function()
-        resp = requestFunc({
-            Url = API_BASE .. "/auth",
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = Http:JSONEncode({
-                blob = blob
-            })
+    local ch=_S:JSONDecode(chResp.Body)
+    if type(ch)~="table" or ch.status~="OK" then
+        print("Auth Failed:", ch.status or "CHALLENGE_BAD") return false
+    end
+
+    local session=ch.session
+    local nonce_s=b64u_dec(ch.nonce_s)
+    local salt=b64u_dec(ch.salt)
+    local expMs=(ch.exp or 0)*1000
+
+    local cnRaw=_S:GenerateGUID(false).."|"..tostring(os.clock()).."|"..tostring(tick())
+    local clientNonce=b64u_enc(sha256(cnRaw))
+
+    local ikm=key.."|"..hwidHash.."|"..clientNonce.."|"..nonce_s
+    local clientKey=hkdf_sha256(ikm, salt, "AUTHv2", 32)
+
+    local proofMsg=session.."|"..tostring(expMs).."|"..hwidHash
+    local proof=b64u_enc(hmac_sha256(clientKey, proofMsg))
+
+    local vResp=__rq({
+        Url=__API.."/verify",
+        Method="POST",
+        Headers={["Content-Type"]="application/json"},
+        Body=_S:JSONEncode({
+            session=session,
+            hwidHash=hwidHash,
+            clientNonce=clientNonce,
+            proof=proof,
+            key=key
         })
-    end)
-
-    if not okReq or not resp or not resp.Body then
-        print("Auth Failed:", "REQUEST_ERROR", errReq)
-        return false
+    })
+    if not vResp or vResp.StatusCode~=200 then
+        print("Auth Failed: VERIFY_HTTP_FAIL") return false
     end
 
-    if resp.StatusCode == 429 then
-        print("Auth Failed:", "RATE_LIMIT_EXCEEDED")
-        return false
+    local dat=_S:JSONDecode(vResp.Body)
+    if type(dat)~="table" or dat.status~="AUTH_OK" or type(dat.token)~="string" then
+        print("Auth Failed:", dat.status or "VERIFY_BAD") return false
     end
 
-    if resp.StatusCode ~= 200 then
-        print("Auth Failed:", "HTTP_" .. tostring(resp.StatusCode))
-        return false
-    end
-
-    local data
-    local okJson = pcall(function()
-        data = Http:JSONDecode(resp.Body)
-    end)
-    if not okJson or type(data) ~= "table" then
-        print("Auth Failed:", "BAD_JSON")
-        return false
-    end
-
-    if data.status ~= "AUTH_OK" then
-        print("Auth Failed:", data.status)
-        return false
-    end
-
-    if not data.token or type(data.token) ~= "string" or #data.token == 0 then
-        print("Auth Failed:", "NO_TOKEN_IN_RESPONSE")
-        return false
-    end
-
-    local payload, perr = parseAndVerifyToken(data.token, key, hwid, nonce)
+    local payload,perr=_parse(dat.token, hwidHash)
     if not payload then
-        print("Auth Failed:", "TOKEN_FAIL_" .. tostring(perr))
-        return false
+        print("Auth Failed: TOKEN_FAIL_"..tostring(perr)) return false
     end
 
-    getgenv().SH_Service_Token = data.token
+    getgenv().SH_Service_Token=dat.token
+    print("SH_Service:Authenticated")
+    print("SH_Service: time:"..(tick()-t0).." s")
 
-    print("Auth Success! Token valid until:", payload.exp and os.date("%Y-%m-%d %H:%M:%S", payload.exp) or "N/A")
+    local gNonce=b64u_enc(sha256(_S:GenerateGUID(false)..tostring(tick())))
+    local gSign=b64u_enc(hmac_sha256(
+        key,
+        b64u_enc(dat.token).."."..b64u_enc(gNonce)
+    ))
+
+    local gResp=__rq({
+        Url=__API.."/group",
+        Method="POST",
+        Headers={["Content-Type"]="application/json"},
+        Body=_S:JSONEncode({accesstoken=dat.token, nonce=gNonce, sign=gSign})
+    })
+    if gResp and gResp.StatusCode==200 then
+        local gd=_S:JSONDecode(gResp.Body)
+        if gd and gd.status=="OK" then
+            getgenv().SH_UserGroup=gd.data
+            getgenv().SH_AuthId=gd.authid
+        end
+    end
+
     return true, payload
 end
 
