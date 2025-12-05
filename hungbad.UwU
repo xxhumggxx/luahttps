@@ -256,41 +256,33 @@ local function _parse(token, hwidHash, clientKey)
 end
 
 local function authSH()
-    local t0=tick()
-    print([==[
-SH_Service Auth SDK v2
-__  __ ____ 
-\ \/ /|  _ \
- \  / | | | |
- /  \ | |_| |
-/_/\_\|____/
-]==])
+    local t0 = tick()
+    print("SH_Service: Authenticating...")
 
-    local key=getgenv().SH_Service_Key
+    local key = getgenv().SH_Service_Key
     if type(key)~="string" or not key:match("^[A-F0-9]+$") or #key~=32 then
-        print("Auth Failed: KEY_FORMAT_INVALID")
+        print("SH_Service: Auth Failed (KEY_FORMAT_INVALID)")
         return false
     end
 
-    local hwid=_hw()
-    local hwidHash=b64u_enc(sha256(hwid))
+    local hwid = _hw()
+    local hwidHash = b64u_enc(sha256(hwid))
 
-    local success, chData = pcall(__rq, {
+    local ok, chData = pcall(__rq, {
         Url=__API.."/challenge",
         Method="POST",
         Headers={["Content-Type"]="application/json"},
         Body=_S:JSONEncode({hwidHash=hwidHash})
     })
-
-    if not success or not chData or chData.StatusCode~=200 then
-        print("Auth Failed: CHALLENGE_HTTP_FAIL")
+    if not ok or not chData or chData.StatusCode~=200 then
+        print("SH_Service: Auth Failed (CHALLENGE_HTTP_FAIL)")
         return false
     end
 
     local ch
-    success, ch = pcall(_S.JSONDecode, _S, chData.Body)
-    if not success or type(ch)~="table" or ch.status~="OK" then
-        print("Auth Failed:", ch and ch.status or "CHALLENGE_BAD")
+    ok, ch = pcall(_S.JSONDecode, _S, chData.Body)
+    if not ok or type(ch)~="table" or ch.status~="OK" then
+        print("SH_Service: Auth Failed (CHALLENGE_BAD)")
         return false
     end
 
@@ -299,8 +291,8 @@ __  __ ____
     local salt = b64u_dec(ch.salt)
     local expSec = ch.exp or 0
 
-    local cnRaw=_S:GenerateGUID(false).."|"..tostring(os.clock()).."|"..tostring(tick())
-    local clientNonce=b64u_enc(sha256(cnRaw))
+    local cnRaw = _S:GenerateGUID(false).."|"..tostring(os.clock()).."|"..tostring(tick())
+    local clientNonce = b64u_enc(sha256(cnRaw))
 
     local ikm = key.."|"..hwidHash.."|"..clientNonce.."|"..nonce_s
     local clientKey = hkdf_sha256(ikm, salt, "AUTHv2", 32)
@@ -311,7 +303,7 @@ __  __ ____
     local sealedPack = sealJSON({ proof = proof }, clientKey)
 
     local vResp
-    success, vResp = pcall(__rq, {
+    ok, vResp = pcall(__rq, {
         Url=__API.."/verify",
         Method="POST",
         Headers={["Content-Type"]="application/json"},
@@ -324,31 +316,28 @@ __  __ ____
             plain_sha=sealedPack.plain_sha
         })
     })
-
-    if not success or not vResp or vResp.StatusCode~=200 then
-        print("Auth Failed: VERIFY_HTTP_FAIL")
+    if not ok or not vResp or vResp.StatusCode~=200 then
+        print("SH_Service: Auth Failed (VERIFY_HTTP_FAIL)")
         return false
     end
 
     local dat
-    success, dat = pcall(_S.JSONDecode, _S, vResp.Body)
-    if not success or type(dat)~="table" or dat.status~="AUTH_OK" or type(dat.token)~="string" then
-        print("Auth Failed:", dat and dat.status or "VERIFY_BAD")
+    ok, dat = pcall(_S.JSONDecode, _S, vResp.Body)
+    if not ok or type(dat)~="table" or dat.status~="AUTH_OK" or type(dat.token)~="string" then
+        print("SH_Service: Auth Failed (VERIFY_BAD)")
         return false
     end
 
     local payload, perr = _parse(dat.token, hwidHash, clientKey)
     if not payload then
-        print("Auth Failed: TOKEN_FAIL_"..tostring(perr))
+        print("SH_Service: Auth Failed (TOKEN_FAIL_"..tostring(perr)..")")
         return false
     end
 
-    getgenv().SH_Service_Token=dat.token
-    print("SH_Service:Authenticated")
-    print("SH_Service: time:"..(tick()-t0).." s")
+    getgenv().SH_Service_Token = dat.token
 
-    local gNonce=b64u_enc(sha256(_S:GenerateGUID(false)..tostring(tick())))
-    local gSign=b64u_enc(hmac_sha256(
+    local gNonce = b64u_enc(sha256(_S:GenerateGUID(false)..tostring(tick())))
+    local gSign = b64u_enc(hmac_sha256(
         key,
         b64u_enc(dat.token).."."..b64u_enc(gNonce)
     ))
@@ -359,7 +348,8 @@ __  __ ____
         sign=gSign
     }, clientKey)
 
-    success, gResp = pcall(__rq, {
+    local gResp
+    ok, gResp = pcall(__rq, {
         Url=__API.."/group",
         Method="POST",
         Headers={["Content-Type"]="application/json"},
@@ -369,15 +359,17 @@ __  __ ____
         })
     })
 
-    if success and gResp and gResp.StatusCode==200 then
+    if ok and gResp and gResp.StatusCode==200 then
         local gd
-        success, gd = pcall(_S.JSONDecode, _S, gResp.Body)
-        if success and gd and gd.status=="OK" then
-            getgenv().SH_UserGroup=gd.data
-            getgenv().SH_AuthId=gd.authid
+        ok, gd = pcall(_S.JSONDecode, _S, gResp.Body)
+        if ok and gd and gd.status=="OK" then
+            getgenv().SH_UserGroup = gd.data
+            getgenv().SH_AuthId = gd.authid
         end
     end
 
+    print("SH_Service: Authenticated")
+    print("SH_Service: Time taken "..(tick()-t0).."s")
     return true, payload
 end
 
